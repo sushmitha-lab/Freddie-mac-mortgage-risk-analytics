@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: raw
+    database: CAPITAL_MARKETS_DM
+    schema: RAW
+    tables:
+      - name: RAW_ORIG_2018
+      - name: RAW_SVCG_2018
+      - name: RAW_ORIG_2019
+      - name: RAW_SVCG_2019
+      - name: RAW_ORIG_2020
+      - name: RAW_SVCG_2020

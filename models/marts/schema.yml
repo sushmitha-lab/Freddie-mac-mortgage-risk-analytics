@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: "Date dimension spanning 1999-2026, used for time-based analysis across the loan portfolio."
+    columns:
+      - name: date_day
+        description: "The calendar date, at daily grain."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_borrower
+    description: "Borrower-level attributes at loan grain, including credit score and DTI bands."
+    columns:
+      - name: loan_sequence_number
+        description: "Unique identifier for the loan, primary key of this dimension."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_loan_terms
+    description: "Loan product attributes including purpose, property type, occupancy, and channel, with human-readable descriptions."
+    columns:
+      - name: loan_sequence_number
+        description: "Unique identifier for the loan, primary key of this dimension."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: fct_loan_originations
+    description: "Origination fact table at loan grain. One row per loan, containing origination-time measures."
+    columns:
+      - name: loan_sequence_number
+        description: "Unique identifier for the loan, primary key of this fact table."
+        data_tests:
+          - unique
+          - not_null
+      - name: original_upb
+        description: "Original unpaid principal balance at origination."
+        data_tests:
+          - not_null
+
+  - name: fct_loan_payments
+    description: "Monthly performance fact table. One row per loan per reporting month, including delinquency and default flags."
+    columns:
+      - name: loan_sequence_number
+        description: "Foreign key to dim_borrower, dim_loan_terms, and fct_loan_originations."
+        data_tests:
+          - not_null
+      - name: monthly_reporting_period
+        description: "The month this performance record applies to."
+        data_tests:
+          - not_null
+      - name: is_default_event
+        description: "True if the loan was severely delinquent (90+ days past due) or experienced a loss event in this month, per standard credit risk default definition."
