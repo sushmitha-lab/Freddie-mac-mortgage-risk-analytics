@@ -1,4 +1,5 @@
 # Freddie Mac Mortgage Risk Analytics
+**🔗 [Live App](https://freddie-mac-mortgage-risk-analytics.streamlit.app/) · [GitHub Repo](https://github.com/sushmitha-lab/Freddie-mac-mortgage-risk-analytics)**
 
 An end-to-end analytics engineering project that transforms Freddie Mac's public Single-Family Loan-Level Dataset into a dimensional data warehouse, with a Streamlit application for portfolio-level and loan-level risk exploration.
 
