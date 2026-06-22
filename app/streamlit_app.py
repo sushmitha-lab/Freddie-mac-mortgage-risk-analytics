@@ -63,7 +63,7 @@ if page == "Portfolio Overview":
         st.subheader("Default Rate by Vintage Year")
         df = session.sql("""
             select
-                year(o.first_payment_date) as vintage_year,
+                o.source_vintage_year as vintage_year,
                 count(distinct f.loan_sequence_number) as total_loans,
                 count(distinct case when f.is_default_event then f.loan_sequence_number end) as defaulted_loans
             from CAPITAL_MARKETS_DM.STAGING_marts.fct_loan_payments f
@@ -169,7 +169,7 @@ else:
     if selected_band != "All":
         where_clauses.append(f"b.credit_score_band = '{selected_band}'")
     if selected_vintage != "All":
-        where_clauses.append(f"year(o.first_payment_date) = {selected_vintage}")
+        where_clauses.append(f"o.source_vintage_year = {selected_vintage}")
 
     where_sql = "where " + " and ".join(where_clauses) if where_clauses else ""
 
@@ -183,7 +183,7 @@ else:
             t.occupancy_status_description,
             o.original_upb,
             o.original_interest_rate,
-            year(o.first_payment_date) as vintage_year
+            o.source_vintage_year as vintage_year
         from CAPITAL_MARKETS_DM.STAGING_marts.fct_loan_originations o
         join CAPITAL_MARKETS_DM.STAGING_marts.dim_borrower b
             on o.loan_sequence_number = b.loan_sequence_number

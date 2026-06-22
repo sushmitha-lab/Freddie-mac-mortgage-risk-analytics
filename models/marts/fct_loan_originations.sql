@@ -5,6 +5,7 @@ with originations as (
 final as (
     select
         loan_sequence_number,
+        source_vintage_year,
         first_payment_date,
         maturity_date,
         original_upb,

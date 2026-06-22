@@ -11,16 +11,17 @@ orig_2020 as (
 ),
 
 unioned as (
-    select * from orig_2018
+    select *, 2018 as source_vintage_year from orig_2018
     union all
-    select * from orig_2019
+    select *, 2019 as source_vintage_year from orig_2019
     union all
-    select * from orig_2020
+    select *, 2020 as source_vintage_year from orig_2020
 ),
 
 cleaned as (
     select
         loan_sequence_number,
+        source_vintage_year,
         try_to_number(credit_score)                  as credit_score,
         try_to_date(first_payment_date, 'YYYYMM')     as first_payment_date,
         first_time_homebuyer_flag,
