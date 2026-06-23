@@ -5,7 +5,6 @@ import altair as alt
 st.set_page_config(page_title="Mortgage Risk Explorer", layout="wide")
 
 conn = st.connection("snowflake")
-session = conn.session()
 
 st.title("🏠 Mortgage Risk Explorer")
 st.caption("Freddie Mac Single-Family Loan-Level Dataset · 2018–2020 vintages · 150,000 loans")
@@ -15,7 +14,7 @@ page = st.sidebar.radio("Navigate", ["Portfolio Overview", "Loan Explorer"])
 # ---------- PORTFOLIO OVERVIEW ----------
 if page == "Portfolio Overview":
 
-    summary = session.sql("""
+    summary = conn.query("""
         select
             count(distinct f.loan_sequence_number) as total_loans,
             sum(o.original_upb) as total_upb,
@@ -23,7 +22,7 @@ if page == "Portfolio Overview":
         from CAPITAL_MARKETS_DM.STAGING_marts.fct_loan_payments f
         join CAPITAL_MARKETS_DM.STAGING_marts.fct_loan_originations o
             on f.loan_sequence_number = o.loan_sequence_number
-    """).to_pandas()
+    """)
 
     total_loans = int(summary["TOTAL_LOANS"][0])
     total_upb = float(summary["TOTAL_UPB"][0])
@@ -41,7 +40,7 @@ if page == "Portfolio Overview":
 
     with col1:
         st.subheader("Default Rate by Credit Score Band")
-        df = session.sql("""
+        df = conn.query("""
             select
                 b.credit_score_band,
                 count(distinct f.loan_sequence_number) as total_loans,
@@ -50,7 +49,7 @@ if page == "Portfolio Overview":
             join CAPITAL_MARKETS_DM.STAGING_marts.dim_borrower b
                 on f.loan_sequence_number = b.loan_sequence_number
             group by 1
-        """).to_pandas()
+        """)
         df["DEFAULT_RATE"] = df["DEFAULTED_LOANS"] / df["TOTAL_LOANS"] * 100
         chart = alt.Chart(df).mark_bar().encode(
             x=alt.X("CREDIT_SCORE_BAND:N", sort="-y", title="Credit Score Band"),
@@ -61,7 +60,7 @@ if page == "Portfolio Overview":
 
     with col2:
         st.subheader("Default Rate by Vintage Year")
-        df = session.sql("""
+        df = conn.query("""
             select
                 o.source_vintage_year as vintage_year,
                 count(distinct f.loan_sequence_number) as total_loans,
@@ -71,7 +70,7 @@ if page == "Portfolio Overview":
                 on f.loan_sequence_number = o.loan_sequence_number
             group by 1
             order by 1
-        """).to_pandas()
+        """)
         df["DEFAULT_RATE"] = df["DEFAULTED_LOANS"] / df["TOTAL_LOANS"] * 100
         chart = alt.Chart(df).mark_bar().encode(
             x=alt.X("VINTAGE_YEAR:O", title="Vintage Year"),
@@ -86,7 +85,7 @@ if page == "Portfolio Overview":
 
     with col1:
         st.subheader("Default Rate by Loan Purpose")
-        df = session.sql("""
+        df = conn.query("""
             select
                 t.loan_purpose_description,
                 count(distinct f.loan_sequence_number) as total_loans,
@@ -95,7 +94,7 @@ if page == "Portfolio Overview":
             join CAPITAL_MARKETS_DM.STAGING_marts.dim_loan_terms t
                 on f.loan_sequence_number = t.loan_sequence_number
             group by 1
-        """).to_pandas()
+        """)
         df["DEFAULT_RATE"] = df["DEFAULTED_LOANS"] / df["TOTAL_LOANS"] * 100
         chart = alt.Chart(df).mark_bar().encode(
             x=alt.X("LOAN_PURPOSE_DESCRIPTION:N", sort="-y", title="Loan Purpose"),
@@ -106,7 +105,7 @@ if page == "Portfolio Overview":
 
     with col2:
         st.subheader("Default Rate by Occupancy Type")
-        df = session.sql("""
+        df = conn.query("""
             select
                 t.occupancy_status_description,
                 count(distinct f.loan_sequence_number) as total_loans,
@@ -115,7 +114,7 @@ if page == "Portfolio Overview":
             join CAPITAL_MARKETS_DM.STAGING_marts.dim_loan_terms t
                 on f.loan_sequence_number = t.loan_sequence_number
             group by 1
-        """).to_pandas()
+        """)
         df["DEFAULT_RATE"] = df["DEFAULTED_LOANS"] / df["TOTAL_LOANS"] * 100
         chart = alt.Chart(df).mark_bar().encode(
             x=alt.X("OCCUPANCY_STATUS_DESCRIPTION:N", sort="-y", title="Occupancy Type"),
@@ -126,14 +125,14 @@ if page == "Portfolio Overview":
 
     st.divider()
     st.subheader("Default Events Over Time")
-    df = session.sql("""
+    df = conn.query("""
         select
             monthly_reporting_period,
             count(distinct case when is_default_event then loan_sequence_number end) as defaulted_loans
         from CAPITAL_MARKETS_DM.STAGING_marts.fct_loan_payments
         group by 1
         order by 1
-    """).to_pandas()
+    """)
     chart = alt.Chart(df).mark_line(point=True).encode(
         x=alt.X("MONTHLY_REPORTING_PERIOD:T", title="Month"),
         y=alt.Y("DEFAULTED_LOANS:Q", title="Loans in Default State")
@@ -144,12 +143,12 @@ if page == "Portfolio Overview":
 else:
     st.subheader("Search & Filter Loans")
 
-    states_df = session.sql("""
+    states_df = conn.query("""
         select distinct property_state
         from CAPITAL_MARKETS_DM.STAGING_marts.dim_loan_terms
         where property_state is not null
         order by 1
-    """).to_pandas()
+    """)
     state_options = ["All"] + states_df["PROPERTY_STATE"].tolist()
 
     col1, col2, col3 = st.columns(3)
@@ -173,7 +172,7 @@ else:
 
     where_sql = "where " + " and ".join(where_clauses) if where_clauses else ""
 
-    results = session.sql(f"""
+    results = conn.query(f"""
         select
             o.loan_sequence_number,
             t.property_state,
@@ -191,7 +190,7 @@ else:
             on o.loan_sequence_number = t.loan_sequence_number
         {where_sql}
         limit 200
-    """).to_pandas()
+    """, ttl=0)
 
     st.write(f"Showing {len(results)} loans (max 200)")
     st.dataframe(results, use_container_width=True)
@@ -201,7 +200,7 @@ else:
     loan_id = st.text_input("Enter a Loan Sequence Number (e.g. F18Q10000028)")
 
     if loan_id:
-        history = session.sql(f"""
+        history = conn.query(f"""
             select
                 monthly_reporting_period,
                 current_actual_upb,
@@ -211,7 +210,7 @@ else:
             from CAPITAL_MARKETS_DM.STAGING_marts.fct_loan_payments
             where loan_sequence_number = '{loan_id}'
             order by monthly_reporting_period
-        """).to_pandas()
+        """, ttl=0)
 
         if len(history) == 0:
             st.warning("No loan found with that sequence number.")
